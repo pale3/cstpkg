@@ -5,7 +5,7 @@ _pkgname=cstpkg
 pkgver=34.1c635e8
 pkgrel=1
 pkgdesc="A tool to modify automatically PKGBUILD" 
-url="https://github.com/ava1ar/customizepkg" 
+url="https://github.com:pale3/cstpkg.git" 
 license=('GPL')
 arch=('any')
 depends=('bash' 'diffutils') 
@@ -13,7 +13,7 @@ optdepends=(
 	'vim: for vimdiff'
 	'colordiff: for colored diff output'
 )
-source=(git+https://github.com/ava1ar/customizepkg.git) 
+source=(git+https://github.com/pale3/cstpkg.git) 
 sha1sums=('SKIP')
 
 pkgver() {
