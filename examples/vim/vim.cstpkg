@@ -1,0 +1,27 @@
+# This is an example of config file for customizepkg
+#  Copy this file in /etc/customizepkg.d/vim/vim.cstpkg to use it
+#
+# syntax works like this:
+# ACTION CONTEXT PATTERN VALUE OVALUE
+
+# this is readed from PKGBUILD.func 
+# repalce orginal PKGBUILD function with one in PKGBUILD.func
+replace#function#build()
+replace#function#package_vim()
+
+# replace on every occurances of "--with-x=no" with "--with-x=yes"
+replace#global#--with-x=no#--with-x=yes
+replace#global#--disable-pythoninterp#--enable-pythoninterp
+replace#global#--disable-python3interp#--enable-python3interp
+
+# remove pkgname from pkgname array
+remove#pkgname#'vim-minimal'
+remove#pkgname#'vim-python3'
+remove#pkgname#'gvim-python3'
+remove#pkgname#'gvim'
+
+# remove function which we don't need as we used our's
+remove#function#package_gvim()
+remove#function#package_gvim-python3()
+remove#function#package_vim-python3()
+remove#function#package_vim-minimal()
