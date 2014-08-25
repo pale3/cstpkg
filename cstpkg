@@ -14,7 +14,7 @@ backupfile="PKGBUILD.original"
 
 clean(){
 		echo "=> Removing work files bellow:"
-		destroy="${hooksfile} ${customfile} ${tmpfile} ${tmpfile}.orig hooks_* vim.script"
+		destroy="${hooksfile} ${customfile} ${tmpfile} ${tmpfile}.orig hooks_* *.cstpkg"
 
 		for i in ${destroy[@]}; do 
 			[[ -f $i ]] && echo "  -> $i" && rm $i
@@ -209,7 +209,7 @@ do
 	
 	# make any changes to PKGBUILD.custom
 	# 1 configfile 2 originalscriptfile 3 scriptfile
-	modify_file "./${package}.script" "./PKGBUILD" "./${tmpfile}" || exit 1
+	modify_file "./${package}.cstpkg" "./PKGBUILD" "./${tmpfile}" || exit 1
 	
 	if [ ${MODIFY} -eq 1 ]; then
 		mv ./PKGBUILD.tmp ./PKGBUILD
