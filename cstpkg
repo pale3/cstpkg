@@ -95,7 +95,7 @@ modify_file()
 							
 							#<(sed -n "/${value}/,/^}/p" "./PKGBUILD.hooks" ) \
 							diff -ub <(sed -n "/${pattern}/,/^}/p" ${scriptfile}) \
-							<(sed -n "/${pattern}/,/^}/p" "./PKGBUILD.hooks" ) \
+							<(sed -n "/${pattern}/,/^}/p" "./${hooksfile}" ) \
 							> ./hooks_${pattern}.diff
 							 
 							echo "=> Patching ${scriptfile} with ./hook_${pattern}.diff"	
@@ -194,7 +194,7 @@ do
 	# package doesnt exist in CONFIGDIR/
 	[[ ! -d ${CONFIGDIR}/${package} ]] && continue
 	
-	for files in /etc/customizepkg.d/${package}/*; do
+	for files in /etc/cstpkg.d/${package}/*; do
 		
 		file=$(echo $files | cut -d'/' -f5)
 		
@@ -216,8 +216,6 @@ do
 		#clean all files
 		clean
 		echo
-	else
-		rm ./PKGBUILD.work
 	fi
 
 done
