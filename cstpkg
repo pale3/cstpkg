@@ -133,7 +133,7 @@ modify_file()
 							#[[ ${context} =~ depends$ ]] && \
 							#pattern="${pattern}[<>=]*\(: \|\)[a-z0-9.{$}\-]*" 
 							# junk the quotes too
-							sed -i "/^${context}=/,/)$/ s|[[:blank:]]*['\"]*${pattern}['\"]*||g" "${scriptfile}" 	
+							sed -i "/${context}/,/)$/ s|[[:blank:]]*['\"]*${pattern}['\"]*||g" "${scriptfile}" 	
 						;;
 				esac ;;
 

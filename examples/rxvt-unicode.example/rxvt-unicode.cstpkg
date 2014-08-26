@@ -1,0 +1,13 @@
+# replace on every occurances of "--enable-iso14755" with "--disable-iso14755"
+replace#global#--enable-iso14755#--disable-iso14755
+replace#global#--enable-startup-notification#--disable-startup-notification
+replace#global#--enable-transparency#--disable-transparency
+
+# remove makedepends
+# some regexpr can be used for action REMOVE, NOTE: needs to be tested more
+# expr like \<\> for exact match can be used
+# expr like ^ for matching begining of line can be used
+remove#^makedepends#'startup-notification'
+remove#\<depends\>#'startup-notification'
+
+# vim:set ft=conf:
