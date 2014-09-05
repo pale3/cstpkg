@@ -1,23 +1,69 @@
 #!/bin/bash
 #
-NAME=cstpkg
+NAME="cstpkg"
 CONFIGDIR="/etc/${NAME}.d"
 LOCALCONFIGDIR="${HOME}/.${NAME}"
+LIBDIR="/usr/lib/cstpkg"
+#LIBDIR="/home/marko/Documents/projects/bash/cstpkg/lib"
 
-customfile="PKGBUILD.rpl"
 hooksfile="PKGBUILD.func"
-tmpfile="PKGBUILD.tmp"
+tmpfile="PKGBUILD.tmp" 
 backupfile="PKGBUILD.original"
 
 # use colordiff if it's available
 [[ $(type -p colordiff) ]] && DIFFCMD="colordiff -ub" || DIFFCMD="diff -ub"
 
+# define colors
+R="$(tput bold)$(tput setaf 1)"
+G="$(tput bold)$(tput setaf 2)"
+B="$(tput bold)$(tput setaf 4)"
+Y="$(tput bold)$(tput setaf 3)"
+W="$(tput bold)$(tput setaf 7)"
+w="$(tput setaf 7)"
+N="$(tput sgr0)"
+
+info(){
+	local msgtype="$1"
+	case $msgtype in
+		-m ) printf "%s\n" " ${G}:::${N} $2" 	;; 
+		-e ) printf "%s\n" " ${R}:E:${N} $2"; exit 254 ;;
+		-w ) printf "%s\n" " ${Y}:W:${N} $2" 	;; 
+		-a ) printf "%s\n" "  -> $2" ;; 
+	esac
+}
+
+# dont need this but I created it because maybe more idea will come
+include(){
+	local modules="$@"
+	
+	for module in ${modules[@]} ; do
+		[[ -e ${LIBDIR}/${module}.bash ]] && \
+			source "${LIBDIR}/${module}.bash" || notfound+="${module} "
+	done
+
+	[[ ! -z $notfound ]] && 
+	for i in ${notfound}; do
+		info -w "Lib '${W}$i${N}' doesn't exist"
+	done
+}
+
+validate_and_copy_file(){
+	local file=${1}
+
+	# checking exsistance of hooks file
+	[[ ! -f ${CONFIGDIR}/${package}/${file} ]] && \
+		info -e "File $file doen't exist" && exit 1
+
+	cp ${CONFIGDIR}/${package}/${file} "./"
+
+}
+
 clean(){
-		echo "=> Removing work files bellow:"
-		destroy="${hooksfile} ${customfile} ${tmpfile} ${tmpfile}.orig hooks_* *.cstpkg"
+		local destroy="${hooksfile} ${tmpfile} ${tmpfile}.orig hooks_* *.cstpkg"
+		info -m "Removing work files bellow:"
 
 		for i in ${destroy[@]}; do 
-			[[ -f $i ]] && echo "  -> $i" && rm $i
+			[[ -f $i ]] && info -a "$i" && rm $i
 		done
 		
 }
@@ -28,56 +74,36 @@ modify_file()
 	local configfile=$1
 	local originalscriptfile=$2
 	local scriptfile=$3
-
+	
+	# NOTE: DO I NEED THIS 
 	# if the customize file is executable, run it, then we're done.
 	if [ -x "${configfile}" ]; then
-		echo "=> ${configfile} is executable, so treating it as a script instead of config"
+		info -m "${configfile} is executable, so treating it as a script instead of config"
 		"${configfile}" "${originalscriptfile}" "${scriptfile}" && return 0 || exit 1
 	fi
 
-	grep --invert-match "\(^#\|^$\)" ${configfile} |
+	grep "^%" ${configfile} |
+	while read -r action context pattern; do
+		case ${action} in
+			%config )
+					include savedconfig
+					restore_config "${context}"
+				;;
+			# TODO: add strict nonstrict 	
+			* )
+				info -e "There is no such action: ${action}"
+				;;
+		esac
+	done
+
+	grep --invert-match "\(^#\|^$\|^%\)" ${configfile} |
 	while IFS='#' read -r action context pattern value ovalue; do
 		case ${action} in
-			use )
-					case ${context} in
-						file ) 
-							case ${pattern} in
-
-								strict )
-									# NOTE use#file#strict#myPKGBUILD
-									# zamjeni cijeli PKGBUILD, sa ovim iz config dir
-									echo "=> using strict '${value}'" 
-									
-									[[ ! -f ${CONFIGDIR}/${package}/${value} ]] && \
-										echo "File '${value}' doesn't exist in '$CONFIGDIR'" && exit 1 
-									;;
-
-								nonstrict) 
-									# TODO: dali je u redu ovo
-									# NOTE use#file#nonstrict#myPKGBUILD
-									# ignooriraj default package variables from file
-									echo "using nonstrict '${value}'"
-									sed -n "1,/^[a-z].*()/p" ./PKGBUILD | head -n -1  > ${scriptfile}
-									sed -n "/^[a-zA-Z].*() {/,/^}\n/p" "${customfile}" >> ${scriptfile}
-									;;
-
-								* ) 
-									echo "${pattern} not recognized" && \
-									exit 1
-									;;
-							esac ;;
-						* ) 
-							# NOTE: use#dsfasd#
-							echo "${context} not recognized" && \
-							exit 1
-							;;
-					esac ;;
-			
 			replace)
 					#value="${value//\'}"
 					case ${context} in
 						global ) 
-							echo "=> replaces '${pattern}' with '${value}' in ${context}"
+							info -m "replaces '${pattern}' with '${value}' in ${context}"
 							case ${pattern} in
 								makedepends|optdepends|depends)
 									pattern="${pattern}[<>=]*\(: \|\)[a-z0-9.{$}\-]*"
@@ -87,27 +113,25 @@ modify_file()
 							esac ;;
 						function ) 
 							#	NOTE:	use#file#hook#function name#	
-							echo "=> diff hook '${pattern}' from ${hooksfile}" 
+							info -m "diff hook '${pattern}' from ${hooksfile}"
 							
-							# checking exsistance of hooks file
-							[[ ! -f ${CONFIGDIR}/${package}/${hooksfile} ]] && \
-								echo "File $HOOKS_FILE doen't exist" && exit 1
-							
+							validate_and_copy_file "${hooksfile}"
+
 							#<(sed -n "/${value}/,/^}/p" "./PKGBUILD.hooks" ) \
 							diff -ub <(sed -n "/${pattern}/,/^}/p" ${scriptfile}) \
 							<(sed -n "/${pattern}/,/^}/p" "./${hooksfile}" ) \
 							> ./hooks_${pattern}.diff
 							 
-							echo "=> Patching ${scriptfile} with ./hook_${pattern}.diff"	
+							info -m "Patching ${scriptfile} with ./hook_${pattern}.diff"	
 							patch --quiet "${scriptfile}" < ./hooks_${pattern}.diff || \
-							echo "=> Something wen't wrong while patching ${scriptfile}"
+							info -w "Something wen't wrong while patching ${scriptfile}"
 							;;
 						inside )
-							echo "=> replaces '${pattern}' with '${value}' in ${context}"
+							info -m "replaces '${pattern}' with '${value}' in ${context}"
 							# NOTE: replace inside specific function
 							sed -i "/^${pattern}() {/,/^}$/ s|${value}|${ovalue}|g" "${scriptfile}" ;; 	
 						* )	
-							echo "=> replaces '${pattern}' with '${value}' in ${context}"
+							info -m "replaces '${pattern}' with '${value}' in ${context}"
 							sed -i "s|${pattern}|${value}|g" "${scriptfile}" ;;
 					esac ;;
 			
@@ -115,20 +139,20 @@ modify_file()
 					# remove#context#pattern
 					case ${context} in 
 						global )
-							echo "=> removes '${pattern//\'/}' from '${context}'"
+							info -m "removes '${pattern//\'/}' from '${context}'"
 							sed -i "s|${pattern}||g" "${scriptfile}"
 							;;
 						function ) 
-							echo "=> removes '${pattern//\'/}' from '${scriptfile}'"
+							info -m "removes '${pattern//\'/}' from '${scriptfile}'"
 							sed -i "/${pattern}/,/^}/d" "${scriptfile}"
 						;;
 						inside )
 							value="$(echo ${value} | sed 's|/|\\/|g')"
-							echo "=> removes inside '${pattern//\'/}' value '${value}'"
+							info -m "removes inside '${pattern//\'/}' value '${value}'"
 							sed -i "/^${pattern}/,/^}$/ {/${value}/d}" "${scriptfile}" 
 							;; 	
 						* ) 
-							echo "=> removes '${pattern//\'/}' from '${context}'"
+							info -m "removes '${pattern//\'/}' from '${context}'"
 							# if makedepends/optdepends/depends
 							#[[ ${context} =~ depends$ ]] && \
 							#pattern="${pattern}[<>=]*\(: \|\)[a-z0-9.{$}\-]*" 
@@ -136,9 +160,18 @@ modify_file()
 							sed -i "/${context}/,/)$/ s|[[:blank:]]*['\"]*${pattern}['\"]*||g" "${scriptfile}" 	
 						;;
 				esac ;;
-
+			insert ) 
+					case ${context} in 
+						function ) 
+								[[ ! -f ${CONFIGDIR}/${package}/PKGBUILD.${pattern} ]] && \
+								echo "File 'PKGBUILD.${pattern}' doesn't exist in '$CONFIGDIR'" && exit 1 
+							;;
+						inside )
+						;;
+					esac ;;
+					
 			*)
-				echo "error: unknown action '${action}'" 1>&2
+				info -e "unknown action '${action}'" 1>&2
 				;;
 		esac
 	done
@@ -164,7 +197,7 @@ while [ "$#" -ne "0" ]; do
 			;;
 		--vimdiff| -v)
 			[[ $(type -p vim) ]] && DIFFCMD="vim -d" && VERBOSE=1 \
-				|| echo 'WARNING: vim was not found' 1>&2
+				|| info -w 'vim was not found' 1>&2
 			;;
 		--verbose ) 
 			VERBOSE=1 ;;
@@ -173,7 +206,7 @@ while [ "$#" -ne "0" ]; do
 done
 
 if [ ! -r ./PKGBUILD ]; then
-	echo 'PKGBUILD not found' 1>&2
+	info -e 'PKGBUILD not found' 1>&2
 	exit 1
 fi
 
@@ -188,37 +221,28 @@ for package in "${pkgname[@]}"
 do
 	
 	# local user prefs take priority
-	if [ -d "${LOCALCONFIGDIR}/${package}" ]; then
+	[[ -d "${LOCALCONFIGDIR}/${package}" ]] && \
 		CONFIGDIR=${LOCALCONFIGDIR}
-	fi
 	
 	# package doesnt exist in CONFIGDIR/
 	[[ ! -d ${CONFIGDIR}/${package} ]] && continue
 	
-	for files in /etc/cstpkg.d/${package}/*; do
-		
-		file=$(echo $files | cut -d'/' -f5)
-		
-		[[ ${file} == "PKGBUILD.rpl" ]] && \
-			cp "${CONFIGDIR}/${package}/${file}" "./"
-		[[ ${file} == "PKGBUILD.func" ]] && \
-			cp "${CONFIGDIR}/${package}/${file}" "./"
-		[[ ${file} == "${package}.cstpkg" ]] && \
-			cp "${CONFIGDIR}/${package}/${file}" "./" 
-		
-	done
+	if [[ -f ${CONFIGDIR}/${package}/${package}.cstpkg ]]; then
+		cp "${CONFIGDIR}/${package}/${package}.cstpkg" "./"
+	else
+		info -e "${package}.cstpkg doesn't exist in $CONFIGDIR/${package}" 
+		exit 255
+	fi	
 	
 	# make any changes to PKGBUILD.custom
 	# 1 configfile 2 originalscriptfile 3 scriptfile
 	modify_file "./${package}.cstpkg" "./PKGBUILD" "./${tmpfile}" || exit 1
-	
+
 	if [ ${MODIFY} -eq 1 ]; then
-		mv ./PKGBUILD.tmp ./PKGBUILD
+		#mv ./PKGBUILD.tmp ./PKGBUILD
 		#clean all files
 		clean
-		echo
 	fi
 
 done
-
 exit 0

@@ -1,0 +1,14 @@
+# This is an example of config file for customizepkg
+#  Copy this file in /etc/customizepkg.d/vim/vim.cstpkg to use it
+#
+# syntax works like this:
+# ACTION CONTEXT PATTERN VALUE OVALUE
+
+# restore configuration file "linux-firmware.conf"
+# based on PKGBUILD so probably you need to edit PKGBUILD to use
+# this 
+%config linux-firmware.conf
+
+# replace function package() from PKGBUILD.func
+replace#function#package()
+
