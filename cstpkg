@@ -239,7 +239,7 @@ do
 	modify_file "./${package}.cstpkg" "./PKGBUILD" "./${tmpfile}" || exit 1
 
 	if [ ${MODIFY} -eq 1 ]; then
-		#mv ./PKGBUILD.tmp ./PKGBUILD
+		mv ./PKGBUILD.tmp ./PKGBUILD
 		#clean all files
 		clean
 	fi
