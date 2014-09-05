@@ -26,6 +26,10 @@ package() {
 	install -D -m 755 ${_pkgname} "${pkgdir}"/usr/bin/${_pkgname}
 	# for compatibility with yaourt
 	ln -s ${_pkgname} "${pkgdir}"/usr/bin/customizepkg
+	
+	mkdir -p "${pkgdir}"/usr/lib/cstpkg/
+	cp -R lib/*.bash "${pkgdir}"/usr/lib/cstpkg
+
 	mkdir -p "${pkgdir}"/etc/cstpkg.d/
 	cp -R examples/*.example "${pkgdir}"/etc/cstpkg.d/
 }
