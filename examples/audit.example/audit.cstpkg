@@ -1,0 +1,16 @@
+# This is an example of config file for customizepkg
+#  Copy this file in /etc/customizepkg.d/audit/audit.cstpkg to use it
+#
+# syntax works like this:
+# ACTION CONTEXT PATTERN VALUE OVALUE
+
+# PKGBUILD.${pkgname} must exist for this to work
+# PKGBUILD.${pkgname} must have all functions and var
+# in particular example this will update all PKGBUILD vars without touching functions,
+# functions in PKGBUILD.${pkgname} will me transfered to PKGBUILD 
+# ex: %update-vars <option>
+# where option is: <aur> or <offical> (is package in aur or offical repo)?
+%update-vars aur
+
+# repalce on global basis options
+replace#global#options=(emptydirs)#options=(emptydirs staticlibs)
