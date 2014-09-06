@@ -3,10 +3,10 @@
 NAME="cstpkg"
 CONFIGDIR="/etc/${NAME}.d"
 LOCALCONFIGDIR="${HOME}/.${NAME}"
-LIBDIR="/usr/lib/cstpkg"
-#LIBDIR="/home/marko/Documents/projects/bash/cstpkg/lib"
+#LIBDIR="/usr/lib/cstpkg"
+LIBDIR="/home/marko/Documents/projects/bash/cstpkg/lib"
 
-hooksfile="PKGBUILD.func"
+hooksfile="PKGBUILD.func" # consist of only functions (build,prepare,check,package)
 tmpfile="PKGBUILD.tmp" 
 backupfile="PKGBUILD.original"
 
@@ -28,6 +28,7 @@ info(){
 		-m ) printf "%s\n" " ${G}:::${N} $2" 	;; 
 		-e ) printf "%s\n" " ${R}:E:${N} $2"; exit 254 ;;
 		-w ) printf "%s\n" " ${Y}:W:${N} $2" 	;; 
+		-d ) printf "%s\n" " ${G}:D:${N} $2" 	;; 
 		-a ) printf "%s\n" "  -> $2" ;; 
 	esac
 }
@@ -59,7 +60,8 @@ validate_and_copy_file(){
 }
 
 clean(){
-		local destroy="${hooksfile} ${tmpfile} ${tmpfile}.orig hooks_* *.cstpkg"
+		local destroy="${hooksfile} ${tmpfile} ${tmpfile}.orig hooks_* \
+			*.cstpkg update-vars* PKGBUILD.upstream PKGBUILD.${package}"
 		info -m "Removing work files bellow:"
 
 		for i in ${destroy[@]}; do 
@@ -67,6 +69,7 @@ clean(){
 		done
 		
 }
+
 
 modify_file()
 {
@@ -88,6 +91,25 @@ modify_file()
 			%config )
 					include savedconfig
 					restore_config "${context}"
+				;;
+			%update-vars )
+					include downloader
+					
+					getpkgbuild "${context}" "./PKGBUILD.upstream"
+
+					# PKGBUILD must exist in $CONFIGDIR/$package
+					# and with him we can update var with new one
+					info -m "updating PKGBUILD vars from usptream"
+					validate_and_copy_file "PKGBUILD.${package}"
+
+					diff -ub <(sed -n "1,/^[a-z].*()/p" ./PKGBUILD | head -n -1 ) \
+					<(sed -n "1,/^[a-z].*()/p" ./PKGBUILD.upstream | head -n -1) \
+					> ./update-vars.diff
+						
+					info -m "Patching ${scriptfile} with ./update_vars.diff"	
+					patch --quiet "${scriptfile}" < ./update-vars.diff
+					#sed -n "/^[a-zA-Z].*() {/,/^}\n/p" "./PKGBUILD.${package}" >> ${scriptfile}
+
 				;;
 			# TODO: add strict nonstrict 	
 			* )
