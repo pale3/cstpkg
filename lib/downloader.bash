@@ -42,7 +42,7 @@ getpkgbuild(){
 	
 	# ako je git uvijek pokreni 
 	[[ -z $current_ver ]] && \
-		info -i "package ${package} doesn't exist in local DB (installed?)"
+		info -w "package ${package} doesn't exist in local DB (installed?)"
 	
 	# needs some tests
 		if (( $git )); then

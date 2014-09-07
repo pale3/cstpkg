@@ -268,11 +268,9 @@ do
 	# 1 configfile 2 originalscriptfile 3 scriptfile
 	modify_file "./${package}.cstpkg" "./PKGBUILD" "./${tmpfile}" || exit 254
 
-	if [ ${MODIFY} -eq 1 ]; then
-		mv ./PKGBUILD.tmp ./PKGBUILD
-		#clean all files
+	(( ${MODIFY} )) && \
+		mv ./PKGBUILD.tmp ./PKGBUILD && \
 		clean
-	fi
 
 done
 exit 0

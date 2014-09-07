@@ -6,7 +6,7 @@ restore_config(){
 	 # as makepkg -o needs to be executed first
 	 if [[ ! -d "${srcdir}/${pkgname}/" ]]; then
 		 MODIFY=0
-		 info -r "There is no "${srcdir}/${pkgname}/", you need to run  makepkg -o first!!"
+		 info -e "There is no "${srcdir}/${pkgname}/", you need to run  makepkg -o first!!"
 		 clean
 		 exit 255
 	 else
