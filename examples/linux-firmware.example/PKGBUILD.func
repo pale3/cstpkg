@@ -1,6 +1,8 @@
 # This file is example of using PKGBUILD.func
 # Functions like (package,build,check,prepare) is mean't to be here.
 
+# specific example is mean't to remove:
+# all files which aren't one specified in linux-firmware.conf
 package() {
   
 	cd "${srcdir}/${pkgname}"

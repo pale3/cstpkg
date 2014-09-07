@@ -5,8 +5,8 @@
 # ACTION CONTEXT PATTERN VALUE OVALUE
 
 # restore configuration file "linux-firmware.conf"
-# based on PKGBUILD so probably you need to edit PKGBUILD to use
-# this 
+# based on PKGBUILD so probably you need to edit PKGBUILD to use it
+# usage: %config <filename.conf>
 %config linux-firmware.conf
 
 # replace function package() from PKGBUILD.func

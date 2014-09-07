@@ -56,7 +56,7 @@ validate_and_copy_file(){
 		info -w "File ${file} doesn't exist! Using orginal PKGBUILD functions" && \
 		fallback=1
 	
-	(( ! $fallback )) && cp ${CONFIGDIR}/${package}/${file} "./"
+	! (( $fallback )) && cp ${CONFIGDIR}/${package}/${file} "./"
 	 return 0
 }
 
@@ -90,7 +90,7 @@ modify_file(){
 				;;
 			%update-vars )
 					include downloader
-					local git=0 fallback=0
+					local git=0
 					
 					[[ ${package} =~ \-git ]] && git=1
 					
@@ -214,7 +214,8 @@ modify_file(){
 }
 
 ################################################
-VERBOSE=0
+fallback=0
+VERBOSE=0 
 PATCH=0
 MODIFY=0
 while [ "$#" -ne "0" ]; do

@@ -1,1 +1,7 @@
+# This is an example of config file for customizepkg
+#  Copy this file in /etc/cstpkg.d/conky-nvidia/conky-nvidia.cstpkg to use it
+#
+# syntax works like this:
+# ACTION CONTEXT PATTERN VALUE OVALUE
+
 %update-vars aur yaourt

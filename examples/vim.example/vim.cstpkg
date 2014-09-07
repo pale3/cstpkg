@@ -1,5 +1,5 @@
 # This is an example of config file for customizepkg
-#  Copy this file in /etc/customizepkg.d/vim/vim.cstpkg to use it
+#  Copy this file in /etc/cstpkg.d/vim/vim.cstpkg to use it
 #
 # syntax works like this:
 # ACTION CONTEXT PATTERN VALUE OVALUE
