@@ -1,0 +1,11 @@
+# This is an example of config file for customizepkg
+#  Copy this file in /etc/customizepkg.d/vim/vim.cstpkg to use it
+#
+# syntax works like this:
+# ACTION CONTEXT PATTERN VALUE OVALUE
+
+# replace on every occurances of "--width-gtk3" with "--witch-gtk2"
+replace#global#--with-gtk3#--with-gtk2
+
+# remove depends gtk3
+remove#depends#'gtk3'

@@ -3,8 +3,8 @@
 NAME="cstpkg"
 CONFIGDIR="/etc/${NAME}.d"
 LOCALCONFIGDIR="${HOME}/.${NAME}"
-LIBDIR="/usr/lib/cstpkg"
-#LIBDIR="/home/marko/Documents/projects/bash/cstpkg/lib"
+#LIBDIR="/usr/lib/cstpkg"
+LIBDIR="/home/marko/Documents/projects/bash/cstpkg/lib"
 
 hooksfile="PKGBUILD.func" # consist of only functions (build,prepare,check,package)
 tmpfile="PKGBUILD.tmp" 

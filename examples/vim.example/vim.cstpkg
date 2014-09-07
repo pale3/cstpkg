@@ -4,8 +4,7 @@
 # syntax works like this:
 # ACTION CONTEXT PATTERN VALUE OVALUE
 
-# this is readed from PKGBUILD.func 
-# repalce orginal PKGBUILD function with one in PKGBUILD.func
+# repalce orginal PKGBUILD functions with one in PKGBUILD.func
 replace#function#build()
 replace#function#package_vim()
 

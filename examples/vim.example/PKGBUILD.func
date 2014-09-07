@@ -1,3 +1,6 @@
+# This file is example of using PKGBUILD.func
+# Functions like (package,build,check,prepare) is mean't to be here.
+
 build() {
   cp -a ${pkgname}-${pkgver} vim-build
   

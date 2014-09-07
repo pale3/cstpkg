@@ -1,10 +1,16 @@
-# replace on every occurances of "--enable-iso14755" with "--disable-iso14755"
+# This is an example of config file for customizepkg
+#  Copy this file in /etc/cstpkg.d/rxvt-unicode/rxvt-unicode.cstpkg to use it
+#
+# syntax works like this:
+# ACTION CONTEXT PATTERN VALUE OVALUE
+
+# replace on every occurances of "--enable-iso14755" with "--disable-iso14755" and so on
 replace#global#--enable-iso14755#--disable-iso14755
 replace#global#--enable-startup-notification#--disable-startup-notification
 replace#global#--enable-transparency#--disable-transparency
 
 # remove makedepends
-# some regexpr can be used for action REMOVE, NOTE: needs to be tested more
+# some regexpr can be used for action REMOVE, NOTE: This needs to be tested more
 # expr like \<\> for exact match can be used
 # expr like ^ for matching begining of line can be used
 remove#^makedepends#'startup-notification'

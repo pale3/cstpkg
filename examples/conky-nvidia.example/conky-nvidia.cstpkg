@@ -3,3 +3,11 @@
 #
 # syntax works like this:
 # ACTION CONTEXT PATTERN VALUE OVALUE
+
+remove#^depends#curl
+remove#^depends#imlib2
+
+replace#global#--enable-curl#--disable-curl
+replace#global#--enable-rss#--disable-rss
+replace#global#--enable-weather-xoap#--disable-weather-xoap
+replace#global#--enable-imlib2#--disable-imlib2
