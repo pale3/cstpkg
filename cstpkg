@@ -25,11 +25,11 @@ N="$(tput sgr0)"
 info(){
 	local msgtype="$1"
 	case $msgtype in
-		-m ) printf "%s\n" " ${G}:::${N} $2" 	;; 
-		-e ) printf "%s\n" " ${R}:E:${N} $2"; exit 254 ;;
-		-w ) printf "%s\n" " ${Y}:W:${N} $2" 	;; 
-		-d ) printf "%s\n" " ${G}:D:${N} $2" 	;; 
-		-a ) printf "%s\n" "  -> $2" ;; 
+		-m ) printf "%b\n" " ${G}:::${N} $2" 	;; 
+		-e ) printf "%b\n" " ${R}:E:${N} $2"	;; 
+		-w ) printf "%b\n" " ${Y}:W:${N} $2" 	;; 
+		-d ) printf "%b\n" " ${G}:D:${N} $2" 	;; 
+		-a ) printf "%b\n" "  -> $2" ;; 
 	esac
 }
 
@@ -43,42 +43,38 @@ include(){
 	done
 
 	[[ ! -z $notfound ]] && 
-	for i in ${notfound}; do
-		info -w "Lib '${W}$i${N}' doesn't exist"
+	for lib in ${notfound}; do
+		info -w "Lib '${W}${lib}${N}' doesn't exist"
 	done
 }
 
 validate_and_copy_file(){
 	local file=${1}
 
-	# checking exsistance of hooks file
+	# checking exsistance of specified file
 	[[ ! -f ${CONFIGDIR}/${package}/${file} ]] && \
-		info -e "File $file doen't exist" && exit 1
-
-	cp ${CONFIGDIR}/${package}/${file} "./"
-
+		info -w "File ${file} doesn't exist! Using orginal PKGBUILD functions" && \
+		fallback=1
+	
+	(( ! $fallback )) && cp ${CONFIGDIR}/${package}/${file} "./"
+	 return 0
 }
 
 clean(){
-		local destroy="${hooksfile} ${tmpfile} ${tmpfile}.orig hooks_* \
-			*.cstpkg update-vars* PKGBUILD.upstream PKGBUILD.${package}"
-		info -m "Removing work files bellow:"
-
-		for i in ${destroy[@]}; do 
-			[[ -f $i ]] && info -a "$i" && rm $i
-		done
-		
+	local destroy="${hooksfile} ${tmpfile} ${tmpfile}.orig hooks_* \
+		*.cstpkg update-vars* PKGBUILD.upstream PKGBUILD.${package}"
+	
+	info -m "Removing work files bellow:"
+	for i in ${destroy[@]}; do 
+		[[ -f $i ]] && info -a "$i" && rm $i
+	done
 }
 
 
-modify_file()
-{
+modify_file(){
+	local configfile=$1 originalscriptfile=$2 scriptfile=$3
 
-	local configfile=$1
-	local originalscriptfile=$2
-	local scriptfile=$3
-	
-	# NOTE: DO I NEED THIS 
+	# NOTE: DO I NEED THIS, WILL I ALLOW THIS KIND OF METHOD?
 	# if the customize file is executable, run it, then we're done.
 	if [ -x "${configfile}" ]; then
 		info -m "${configfile} is executable, so treating it as a script instead of config"
@@ -94,26 +90,38 @@ modify_file()
 				;;
 			%update-vars )
 					include downloader
+					local git=0 fallback=0
 					
-					getpkgbuild "${context}" "./PKGBUILD.upstream"
-
-					# PKGBUILD must exist in $CONFIGDIR/$package
-					# and with him we can update var with new one
+					[[ ${package} =~ \-git ]] && git=1
+					
 					info -m "updating PKGBUILD vars from usptream"
+					
+					# PKGBUILD must exist in $CONFIGDIR/$package. If not it will fallback to upstream ver
+					# and with him we can update var with new one from upstream servers
 					validate_and_copy_file "PKGBUILD.${package}"
-
+					
+					# fetch PKGBUILD 
+					getpkgbuild "${context}" "./PKGBUILD.upstream"
+					# create diff between ./PKGBUILD and PKGBUILD upstream
 					diff -ub <(sed -n "1,/^[a-z].*()/p" ./PKGBUILD | head -n -1 ) \
 					<(sed -n "1,/^[a-z].*()/p" ./PKGBUILD.upstream | head -n -1) \
 					> ./update-vars.diff
-						
+					
+					# finaly patch PKGBUILD
 					info -m "Patching ${scriptfile} with ./update_vars.diff"	
 					patch --quiet "${scriptfile}" < ./update-vars.diff
-					#sed -n "/^[a-zA-Z].*() {/,/^}\n/p" "./PKGBUILD.${package}" >> ${scriptfile}
-
+					
+					# if PKGBUILD.${package} doesn't exist ignore all this bellow: otherwise 
+					# remove all function from PKGBUILD.tmp as we will replace them
+					# with our function from /etc PKGBUILD.audit
+					# also add removed function from PKGBUILD.${package}
+					(( ! $fallback )) && sed -i "/^[a-zA-Z].*() {/,/^}\n/d" "${scriptfile}" && \
+						sed -n "/^[a-zA-Z].*() {/,/^}\n/p" "./PKGBUILD.${package}" >> ${scriptfile}
 				;;
 			# TODO: add strict nonstrict 	
 			* )
-				info -e "There is no such action: ${action}"
+				info -e "There is no such action: ${action}" 1>&2
+				exit 255
 				;;
 		esac
 	done
@@ -194,11 +202,12 @@ modify_file()
 					
 			*)
 				info -e "unknown action '${action}'" 1>&2
+				exit 255
 				;;
 		esac
 	done
 	
-	[[ $VERBOSE -eq 1 ]] && \
+	(( $VERBOSE )) && \
 		${DIFFCMD} "${originalscriptfile}" "${scriptfile}" 
 	
 	return 0
@@ -229,11 +238,11 @@ done
 
 if [ ! -r ./PKGBUILD ]; then
 	info -e 'PKGBUILD not found' 1>&2
-	exit 1
+	exit 125
 fi
 
 # use eval instead of creating a temp file to get pkgname etc
-eval $(grep -E '^[[:blank:]]*_?(pkg.*|git.*|name)=' ./PKGBUILD)
+eval $(grep -E '^[[:blank:]]*_?(pkg.*|git.*|name)=' ./PKGBUILD | grep -Ev 'log|\describe')
 
 # copy for modification
 cp ./PKGBUILD ./${backupfile}
@@ -252,13 +261,12 @@ do
 	if [[ -f ${CONFIGDIR}/${package}/${package}.cstpkg ]]; then
 		cp "${CONFIGDIR}/${package}/${package}.cstpkg" "./"
 	else
-		info -e "${package}.cstpkg doesn't exist in $CONFIGDIR/${package}" 
+		info -e "${package}.cstpkg doesn't exist in $CONFIGDIR/${package}.\n"
 		exit 255
 	fi	
 	
-	# make any changes to PKGBUILD.custom
 	# 1 configfile 2 originalscriptfile 3 scriptfile
-	modify_file "./${package}.cstpkg" "./PKGBUILD" "./${tmpfile}" || exit 1
+	modify_file "./${package}.cstpkg" "./PKGBUILD" "./${tmpfile}" || exit 254
 
 	if [ ${MODIFY} -eq 1 ]; then
 		mv ./PKGBUILD.tmp ./PKGBUILD
