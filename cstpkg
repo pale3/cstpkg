@@ -1,57 +1,23 @@
 #!/bin/bash
 #
-NAME="cstpkg"
-CONFIGDIR="/etc/${NAME}.d"
-LOCALCONFIGDIR="${HOME}/.${NAME}"
-LIBDIR="/usr/lib/cstpkg"
-#LIBDIR="/home/marko/Documents/projects/bash/cstpkg/lib"
+CST_NAME="cstpkg"
+CST_CONFIGDIR="/etc/${CST_NAME}.d"
+CST_LOCALCONFIGDIR="${HOME}/.${CST_NAME}"
+#CST_LIBDIR="/usr/lib/cstpkg"
+CST_LIBDIR="/home/marko/Documents/projects/bash/cstpkg/lib"
 
 hooksfile="PKGBUILD.func" # consist of only functions (build,prepare,check,package)
 tmpfile="PKGBUILD.tmp" 
 backupfile="PKGBUILD.original"
 
+# Load core functions
+source "${CST_LIBDIR}/core.bash" || exit 255
+
+# Load necessary functions for the main script
+include colours
+
 # use colordiff if it's available
 [[ $(type -p colordiff) ]] && DIFFCMD="colordiff -ub" || DIFFCMD="diff -ub"
-
-# define colors
-R="$(tput bold)$(tput setaf 1)"
-G="$(tput bold)$(tput setaf 2)"
-B="$(tput bold)$(tput setaf 4)"
-Y="$(tput bold)$(tput setaf 3)"
-W="$(tput bold)$(tput setaf 7)"
-w="$(tput setaf 7)"
-N="$(tput sgr0)"
-
-info(){
-	local msgtype="$1"
-	case $msgtype in
-		-m ) printf "%b\n" " ${G}:::${N} $2" 	;; 
-		-e ) printf "%b\n" " ${R}:E:${N} $2"	;; 
-		-E ) printf "%b\n" "  ${R}*${N}  Fatal error ${2}, Exiting..."; exit $3	;; 
-		-w ) printf "%b\n" " ${Y}:W:${N} $2" 	;; 
-		-d ) printf "%b\n" " ${G}:D:${N} $2" 	;; 
-		-a ) printf "%b\n" "  -> $2" ;; 
-	esac
-}
-
-# dont need this but I created it because maybe more idea will come
-include(){
-	local modules="$@"
-	
-	for module in ${modules[@]} ; do
-		[[ -e ${LIBDIR}/${module}.bash ]] && \
-			source "${LIBDIR}/${module}.bash" || notfound+="${module} "
-	done
-
-	if [[ ! -z $notfound ]]; then
-		for lib in ${notfound}; do
-			info -w "Lib '${W}${lib}${N}' doesn't exist"
-		done
-		exit 14 # E_CODE terminate if lib not found
-	fi
-
-	return 0
-}
 
 do_patch(){
 	local scriptfile=${1} diff=${2}
@@ -60,23 +26,10 @@ do_patch(){
 		patch --quiet "${scriptfile}" < ${diff} || \
 			(info -e "Something wen't wrong while patching ${scriptfile}" && return 127)
 	
-	return 0
+	return 0 # E_SUCCESS
 }
 
-validate_and_copy_file(){
-	local file=${1}
-
-	# checking exsistance of specified file
-	if [[ ! -f ${CONFIGDIR}/${package}/${file} ]]; then
-		info -w "File ${file} doesn't exist! Using orginal PKGBUILD functions"
-		return 127
-	else
-		cp ${CONFIGDIR}/${package}/${file} "./" || return 127
-		return 0
-	fi	
-}
-
-clean(){
+do_clean(){
 	local destroy="${hooksfile} ${tmpfile} ${tmpfile}.orig hooks_* \
 		*.cstpkg update-vars* PKGBUILD.upstream PKGBUILD.${package}"
 	
@@ -84,18 +37,6 @@ clean(){
 	for i in ${destroy[@]}; do 
 		[[ -f $i ]] && info -a "$i" && rm $i
 	done
-}
-
-error_handling(){
-	local ret=$?; shift
-	
-	case $ret in
-			0 ) echo 0    ;; # no errors
-		125 ) echo 125  ;; # errors from libs
-		127 ) echo 127  ;; # errors from function
-		255 ) echo 255  ;; # errors from main
-			* ) echo $ret ;; # any other error
-	esac
 }
 
 modify_file(){
@@ -107,6 +48,7 @@ modify_file(){
 		info -m "${configfile} is executable, so treating it as a script instead of config"
 		"${configfile}" "${originalscriptfile}" "${scriptfile}" && return 0 || exit 1
 	fi
+
 	grep "^%" ${configfile} |
 	while read -r action context pattern; do
 		case ${action} in
@@ -174,7 +116,7 @@ modify_file(){
 									sed -i "s|${pattern}|${value}|g" "${scriptfile}" ;;
 							esac ;;
 						function ) 
-							#	NOTE:	use#file#hook#function name#	
+							#	example: replace#function#build()
 							info -m "diff hook '${pattern}' from ${hooksfile}"
 							
 							validate_and_copy_file "${hooksfile}" || return
@@ -189,10 +131,11 @@ modify_file(){
 								(info -e "Something wen't wrong while patching ${scriptfile}" && return 127)
 							;;
 						inside )
-							info -m "replaces '${pattern}' with '${value}' in ${context}"
 							# NOTE: replace inside specific function
+							# example: replace#inside#build()#make#cmake
+							info -m "replaces '${pattern}' with '${value}' in ${context}"
 							sed -i "/^${pattern}() {/,/^}$/ s|${value}|${ovalue}|g" "${scriptfile}" ;; 	
-						* )	
+						* )
 							info -m "replaces '${pattern}' with '${value}' in ${context}"
 							sed -i "s|${pattern}|${value}|g" "${scriptfile}" ;;
 					esac ;;
@@ -225,7 +168,7 @@ modify_file(){
 			insert ) 
 					case ${context} in 
 						function ) 
-								[[ ! -f ${CONFIGDIR}/${package}/PKGBUILD.${pattern} ]] && \
+								[[ ! -f ${CST_CONFIGDIR}/${package}/PKGBUILD.${pattern} ]] && \
 								echo "File 'PKGBUILD.${pattern}' doesn't exist in '$CONFIGDIR'" && exit 1 
 							;;
 						inside )
@@ -288,16 +231,16 @@ for package in "${pkgname[@]}"
 do
 	
 	# local user prefs take priority
-	[[ -d "${LOCALCONFIGDIR}/${package}" ]] && \
-		CONFIGDIR=${LOCALCONFIGDIR}
+	[[ -d "${CST_LOCALCONFIGDIR}/${package}" ]] && \
+		CST_CONFIGDIR=${CST_LOCALCONFIGDIR}
 	
 	# package doesnt exist in CONFIGDIR/
-	[[ ! -d ${CONFIGDIR}/${package} ]] && continue
+	[[ ! -d ${CST_CONFIGDIR}/${package} ]] && continue
 	
-	if [[ -f ${CONFIGDIR}/${package}/${package}.cstpkg ]]; then
-		cp "${CONFIGDIR}/${package}/${package}.cstpkg" "./"
+	if [[ -f ${CST_CONFIGDIR}/${package}/${package}.cstpkg ]]; then
+		cp "${CST_CONFIGDIR}/${package}/${package}.cstpkg" "./"
 	else
-		info -e "${package}.cstpkg doesn't exist in $CONFIGDIR/${package}"
+		info -e "${package}.cstpkg doesn't exist in ${CST_CONFIGDIR}/${package}"
 		exit 255
 	fi	
 	
@@ -307,7 +250,7 @@ do
 
 	(( ${MODIFY} )) && \
 		mv ./PKGBUILD.tmp ./PKGBUILD && \
-		clean
+		do_clean
 
 done
 exit 0
