@@ -3,8 +3,8 @@
 NAME="cstpkg"
 CONFIGDIR="/etc/${NAME}.d"
 LOCALCONFIGDIR="${HOME}/.${NAME}"
-#LIBDIR="/usr/lib/cstpkg"
-LIBDIR="/home/marko/Documents/projects/bash/cstpkg/lib"
+LIBDIR="/usr/lib/cstpkg"
+#LIBDIR="/home/marko/Documents/projects/bash/cstpkg/lib"
 
 hooksfile="PKGBUILD.func" # consist of only functions (build,prepare,check,package)
 tmpfile="PKGBUILD.tmp" 
@@ -27,6 +27,7 @@ info(){
 	case $msgtype in
 		-m ) printf "%b\n" " ${G}:::${N} $2" 	;; 
 		-e ) printf "%b\n" " ${R}:E:${N} $2"	;; 
+		-E ) printf "%b\n" "  ${R}*${N}  Fatal error ${2}, Exiting..."; exit $3	;; 
 		-w ) printf "%b\n" " ${Y}:W:${N} $2" 	;; 
 		-d ) printf "%b\n" " ${G}:D:${N} $2" 	;; 
 		-a ) printf "%b\n" "  -> $2" ;; 
@@ -42,22 +43,37 @@ include(){
 			source "${LIBDIR}/${module}.bash" || notfound+="${module} "
 	done
 
-	[[ ! -z $notfound ]] && 
-	for lib in ${notfound}; do
-		info -w "Lib '${W}${lib}${N}' doesn't exist"
-	done
+	if [[ ! -z $notfound ]]; then
+		for lib in ${notfound}; do
+			info -w "Lib '${W}${lib}${N}' doesn't exist"
+		done
+		exit 14 # E_CODE terminate if lib not found
+	fi
+
+	return 0
+}
+
+do_patch(){
+	local scriptfile=${1} diff=${2}
+	
+	info -m "Patching ${scriptfile} with ${diff}"	
+		patch --quiet "${scriptfile}" < ${diff} || \
+			(info -e "Something wen't wrong while patching ${scriptfile}" && return 127)
+	
+	return 0
 }
 
 validate_and_copy_file(){
 	local file=${1}
 
 	# checking exsistance of specified file
-	[[ ! -f ${CONFIGDIR}/${package}/${file} ]] && \
-		info -w "File ${file} doesn't exist! Using orginal PKGBUILD functions" && \
-		fallback=1
-	
-	! (( $fallback )) && cp ${CONFIGDIR}/${package}/${file} "./"
-	 return 0
+	if [[ ! -f ${CONFIGDIR}/${package}/${file} ]]; then
+		info -w "File ${file} doesn't exist! Using orginal PKGBUILD functions"
+		return 127
+	else
+		cp ${CONFIGDIR}/${package}/${file} "./" || return 127
+		return 0
+	fi	
 }
 
 clean(){
@@ -70,6 +86,17 @@ clean(){
 	done
 }
 
+error_handling(){
+	local ret=$?; shift
+	
+	case $ret in
+			0 ) echo 0    ;; # no errors
+		125 ) echo 125  ;; # errors from libs
+		127 ) echo 127  ;; # errors from function
+		255 ) echo 255  ;; # errors from main
+			* ) echo $ret ;; # any other error
+	esac
+}
 
 modify_file(){
 	local configfile=$1 originalscriptfile=$2 scriptfile=$3
@@ -80,25 +107,25 @@ modify_file(){
 		info -m "${configfile} is executable, so treating it as a script instead of config"
 		"${configfile}" "${originalscriptfile}" "${scriptfile}" && return 0 || exit 1
 	fi
-
 	grep "^%" ${configfile} |
 	while read -r action context pattern; do
 		case ${action} in
 			%config )
 					include savedconfig
-					restore_config "${context}"
+					restore_config "${context}" || return #E_CODE=125
 				;;
 			%update-vars )
 					include downloader
-					local git=0
+					local git=0 fallback=0
 					
+					# git or bzr or svn ...
 					[[ ${package} =~ \-git ]] && git=1
 					
 					info -m "updating PKGBUILD vars from usptream"
 					
 					# PKGBUILD must exist in $CONFIGDIR/$package. If not it will fallback to upstream ver
 					# and with him we can update var with new one from upstream servers
-					validate_and_copy_file "PKGBUILD.${package}"
+					validate_and_copy_file "PKGBUILD.${package}"  || fallback=1
 					
 					# fetch PKGBUILD 
 					getpkgbuild "${context}" "./PKGBUILD.upstream"
@@ -108,15 +135,16 @@ modify_file(){
 					> ./update-vars.diff
 					
 					# finaly patch PKGBUILD
-					info -m "Patching ${scriptfile} with ./update_vars.diff"	
-					patch --quiet "${scriptfile}" < ./update-vars.diff
+					do_patch "${scriptfile}" "./update-vars.diff" || return
 					
 					# if PKGBUILD.${package} doesn't exist ignore all this bellow: otherwise 
 					# remove all function from PKGBUILD.tmp as we will replace them
 					# with our function from /etc PKGBUILD.audit
 					# also add removed function from PKGBUILD.${package}
-					(( ! $fallback )) && sed -i "/^[a-zA-Z].*() {/,/^}\n/d" "${scriptfile}" && \
+					if ! (( $fallback )); then 
+						sed -i "/^[a-zA-Z].*() {/,/^}\n/d" "${scriptfile}"
 						sed -n "/^[a-zA-Z].*() {/,/^}\n/p" "./PKGBUILD.${package}" >> ${scriptfile}
+					fi
 				;;
 			# TODO: add strict nonstrict 	
 			* )
@@ -125,6 +153,10 @@ modify_file(){
 				;;
 		esac
 	done
+
+	# immediately exit from program if error occour
+	E_CODE=$(error_handling)
+	[[ $E_CODE != 0 ]] && return $E_CODE
 
 	grep --invert-match "\(^#\|^$\|^%\)" ${configfile} |
 	while IFS='#' read -r action context pattern value ovalue; do
@@ -145,7 +177,7 @@ modify_file(){
 							#	NOTE:	use#file#hook#function name#	
 							info -m "diff hook '${pattern}' from ${hooksfile}"
 							
-							validate_and_copy_file "${hooksfile}"
+							validate_and_copy_file "${hooksfile}" || return
 
 							#<(sed -n "/${value}/,/^}/p" "./PKGBUILD.hooks" ) \
 							diff -ub <(sed -n "/${pattern}/,/^}/p" ${scriptfile}) \
@@ -154,7 +186,7 @@ modify_file(){
 							 
 							info -m "Patching ${scriptfile} with ./hook_${pattern}.diff"	
 							patch --quiet "${scriptfile}" < ./hooks_${pattern}.diff || \
-							info -w "Something wen't wrong while patching ${scriptfile}"
+								(info -e "Something wen't wrong while patching ${scriptfile}" && return 127)
 							;;
 						inside )
 							info -m "replaces '${pattern}' with '${value}' in ${context}"
@@ -207,17 +239,20 @@ modify_file(){
 		esac
 	done
 	
+	E_CODE=$(error_handling)
+	[[ $E_CODE != 0 ]] && return $E_CODE
+	
 	(( $VERBOSE )) && \
-		${DIFFCMD} "${originalscriptfile}" "${scriptfile}" 
+		${DIFFCMD} "${originalscriptfile}" "${scriptfile}"
 	
 	return 0
 }
 
 ################################################
-fallback=0
 VERBOSE=0 
 PATCH=0
 MODIFY=0
+E_CODE=0
 while [ "$#" -ne "0" ]; do
 	case $1 in
 		-h|--help)
@@ -239,7 +274,7 @@ done
 
 if [ ! -r ./PKGBUILD ]; then
 	info -e 'PKGBUILD not found' 1>&2
-	exit 125
+	exit 255
 fi
 
 # use eval instead of creating a temp file to get pkgname etc
@@ -262,12 +297,13 @@ do
 	if [[ -f ${CONFIGDIR}/${package}/${package}.cstpkg ]]; then
 		cp "${CONFIGDIR}/${package}/${package}.cstpkg" "./"
 	else
-		info -e "${package}.cstpkg doesn't exist in $CONFIGDIR/${package}.\n"
+		info -e "${package}.cstpkg doesn't exist in $CONFIGDIR/${package}"
 		exit 255
 	fi	
 	
 	# 1 configfile 2 originalscriptfile 3 scriptfile
-	modify_file "./${package}.cstpkg" "./PKGBUILD" "./${tmpfile}" || exit 254
+	modify_file "./${package}.cstpkg" "./PKGBUILD" "./${tmpfile}" || \
+		info -E "code $E_CODE" "$E_CODE"
 
 	(( ${MODIFY} )) && \
 		mv ./PKGBUILD.tmp ./PKGBUILD && \
