@@ -3,8 +3,8 @@
 CST_NAME="cstpkg"
 CST_CONFIGDIR="/etc/${CST_NAME}.d"
 CST_LOCALCONFIGDIR="${HOME}/.${CST_NAME}"
-#CST_LIBDIR="/usr/lib/cstpkg"
-CST_LIBDIR="/home/marko/Documents/projects/bash/cstpkg/lib"
+CST_LIBDIR="/usr/lib/cstpkg"
+#CST_LIBDIR="/home/marko/Documents/projects/bash/cstpkg/lib"
 
 hooksfile="PKGBUILD.func" # consist of only functions (build,prepare,check,package)
 tmpfile="PKGBUILD.tmp" 
@@ -57,6 +57,10 @@ modify_file(){
 					restore_config "${context}" || return #E_CODE=125
 				;;
 			%update-vars )
+					include child_parrent
+					[[ $(is_parent_or_child) == 'child' ]] && parrent=$(is_child_of) && \
+						info -m "Don't need to update, child process of ${Y}${parrent}${N}" && return 0
+
 					include downloader
 					local git=0 fallback=0
 					
