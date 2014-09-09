@@ -7,18 +7,16 @@ package() {
   
 	cd "${srcdir}/${pkgname}"
   
-  cp /etc/cstpkg.d/linux-firmware/linux-firmware.conf "${srcdir}/${pkgname}/"
-
-	find * \( \! -type d -and \! -name ${pkgname}.conf \) >> ${pkgname}.files
+	find * \( \! -type d -and \! -name ${pkgname}.conf \) > ${pkgname}.files
 
   find * \( \! -type d -and \! -name ${pkgname}.conf \) \
     | sort ${pkgname}.conf ${pkgname}.files \
-    | uniq -u | xargs -r rm 
+    | uniq -u | xargs -r rm -f
 
 	find -type d -empty -delete 
   
 	# remove .conf file
-  rm linux-firmware.*
+  rm -f linux-firmware.*
 
   install -d -m755 "${pkgdir}/usr/lib/firmware"
   cp -a * "${pkgdir}/usr/lib/firmware/"
