@@ -56,7 +56,7 @@ getpkgbuild(){
 				info -d "fetching ${package} PKGBULD from ${repo}.."
 				info -w "Current versions of ${package} is grater then new version..Downgrading.."
 			else	
-				info -d "Same versions"	&& exit 1
+				info -d "Same versions"	&& exit 0
 			fi	
 		fi
 	
