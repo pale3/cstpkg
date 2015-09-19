@@ -4,7 +4,7 @@ pkgname=cstpkg-git
 _pkgname=cstpkg
 pkgver=34.1c635e8
 pkgrel=1
-pkgdesc="A tool to modify automatically PKGBUILD" 
+pkgdesc="A tool to modify PKGBUILD with custom specifiy recipe" 
 url="https://github.com:pale3/cstpkg.git" 
 license=('GPL')
 arch=('any')
@@ -24,12 +24,15 @@ pkgver() {
 package() { 
 	cd ${_pkgname}
 	install -D -m 755 ${_pkgname} "${pkgdir}"/usr/bin/${_pkgname}
+	
 	# for compatibility with yaourt
 	ln -s ${_pkgname} "${pkgdir}"/usr/bin/customizepkg
-	
-	mkdir -p "${pkgdir}"/usr/lib/cstpkg/
-	cp -R lib/*.bash "${pkgdir}"/usr/lib/cstpkg
+
+	mkdir -p "${pkgdir}"/usr/lib/cstpkg
+	cp -R lib/*.bash "${pkgdir}"/usr/lib/cstpkg/
+
+	mkdir -p "${pkgdir}"/usr/share/cstpkg/examples
+	cp -R examples/*.example "${pkgdir}"/usr/share/cstpkg/examples
 
 	mkdir -p "${pkgdir}"/etc/cstpkg.d/
-	cp -R examples/*.example "${pkgdir}"/etc/cstpkg.d/
 }
