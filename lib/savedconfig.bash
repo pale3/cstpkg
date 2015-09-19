@@ -17,6 +17,7 @@ restore_config(){
 	 info -e "file ${CST_CONFIGDIR}/${package}/${config} doesn't exist" 
 	 info -m "cp your config file to ${CST_CONFIGDIR}/${package}/ for later use"
 	 info -m "then create line config ${config} in ${package}.cstpkg"
+	 info -m "like this: %config <filename.conf>"
 	 return 127
  fi
 }

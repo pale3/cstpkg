@@ -67,7 +67,7 @@ modify_file(){
 					# git or bzr or svn ...
 					[[ ${package} =~ \-git ]] && git=1
 					
-					info -m "updating PKGBUILD vars from usptream"
+					info -m "updating PKGBUILD vars from CVS usptream"
 					
 					# PKGBUILD must exist in $CONFIGDIR/$package. If not it will fallback to upstream ver
 					# and with him we can update var with new one from upstream servers
@@ -165,8 +165,7 @@ modify_file(){
 							# if makedepends/optdepends/depends
 							#[[ ${context} =~ depends$ ]] && \
 							#pattern="${pattern}[<>=]*\(: \|\)[a-z0-9.{$}\-]*" 
-							# junk the quotes too
-							sed -i "/${context}/,/)$/ s|[[:blank:]]*['\"]*${pattern}['\"]*||g" "${scriptfile}" 	
+							sed -i "/${context}/,/)$/ s|[[:blank:]]*['\"]*\<${pattern}\>['\"]*||g" "${scriptfile}" 	
 						;;
 				esac ;;
 			insert ) 
@@ -176,6 +175,9 @@ modify_file(){
 								echo "File 'PKGBUILD.${pattern}' doesn't exist in '$CONFIGDIR'" && exit 1 
 							;;
 						inside )
+							#insert at the beginign of line ^
+							# inser at line nunber 25
+							#insert at the end of line $
 						;;
 					esac ;;
 					
@@ -207,6 +209,7 @@ while [ "$#" -ne "0" ]; do
 			exit 0
 			;;
 		-m|--modify) # show diff stdout 
+			[[ -z $2 ]] && path="." || path="$2"
 			MODIFY=1
 			;;
 		--vimdiff| -v)

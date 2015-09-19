@@ -61,7 +61,7 @@ getpkgbuild(){
 		fi
 	
 	# is curl present? fallback to wget
-	[[ $(type -p curl ) ]] && downloader="curl" opt="-so" \
+	[[ $(type -p curl) ]] && downloader="curl" opt="-so" \
 		|| downloader="wget" opt="--quiet -O" 
 
 	fetch ${url}/packages/${package:0:2}/$package/PKGBUILD "${save_as}"

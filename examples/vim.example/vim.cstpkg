@@ -14,10 +14,10 @@ replace#global#--disable-pythoninterp#--enable-pythoninterp
 replace#global#--disable-python3interp#--enable-python3interp
 
 # remove pkgname from pkgname array
-remove#pkgname#'vim-minimal'
-remove#pkgname#'vim-python3'
-remove#pkgname#'gvim-python3'
-remove#pkgname#'gvim'
+remove#pkgname#vim-minimal
+remove#pkgname#vim-python3
+remove#pkgname#gvim-python3
+remove#pkgname#gvim
 
 # remove function which we don't need as we used our's
 remove#function#package_gvim()

@@ -11,5 +11,4 @@ is_parent_or_child(){
 		S+ ) echo child ;;
 	  Ss ) echo parrent ;;
 	esac 
-
 }
